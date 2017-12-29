@@ -92,7 +92,7 @@
     
     <platform name="ios">
         <preference name="API_KEY_FOR_IOS" />
-        <preference name="LOCATION_USAGE_DESCRIPTION" default="APP需要获取您的定位信息">
+        <preference name="LOCATION_USAGE_DESCRIPTION" default="APP需要获取您的定位信息"/>
         <config-file target="config.xml" parent="/*">
             <feature name="AMap4Plugin">
                 <param name="ios-package" value="CDVAMap"/>
