@@ -150,11 +150,11 @@ static int const MAX_LENGTH = 10;
             }else{
                 if (regeocode)
                 {
-                    NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:regeocode.province,@"provinceName",
-                                          regeocode.city,@"cityName",
-                                          regeocode.citycode,@"cityCode",
-                                          regeocode.district,@"districtName",
-                                          regeocode.township,@"roadName",
+                    NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:regeocode.province != nil ? regeocode.province : @"",@"provinceName",
+                                          regeocode.city != nil ? regeocode.city : @"", @"cityName",
+                                          regeocode.citycode != nil ? regeocode.citycode : @"", @"cityCode",
+                                          regeocode.district != nil ? regeocode.district : @"",@"districtName",
+                                          regeocode.township != nil ? regeocode.township : @"",@"roadName",
                                           @(location.coordinate.latitude),@"latitude",
                                           @(location.coordinate.longitude),@"longitude",
                                           nil];
