@@ -26,7 +26,7 @@ import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MyLocationStyle;
 import com.amap.api.maps.model.PolylineOptions;
-import com.silverbase.salesmanage.R;
+import cn.jyhelp.client.R;
 
 public class TraceActivity extends Activity implements LocationSource,
         AMapLocationListener {

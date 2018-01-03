@@ -29,7 +29,7 @@ import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
 import com.amap.api.maps.model.MyLocationStyle;
-import com.silverbase.salesmanage.R;
+import cn.jyhelp.client.R;
 
 public class MapActivity extends Activity implements LocationSource, AMapLocationListener {
 
