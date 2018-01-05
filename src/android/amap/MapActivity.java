@@ -54,6 +54,13 @@ public class MapActivity extends Activity implements LocationSource, AMapLocatio
      * 初始化AMap对象
      */
     private void init() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+              != PackageManager.PERMISSION_GRANTED) {
+          //申请WRITE_EXTERNAL_STORAGE权限
+          ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                  WRITE_COARSE_LOCATION_REQUEST_CODE);//自定义的code
+      }
+
         if (aMap == null) {
             aMap = mMapView.getMap();
             setUpMap();
