@@ -1,11 +1,15 @@
 package com.amap.cordova;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
@@ -20,6 +24,8 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.LOG;
+import org.apache.cordova.PermissionHelper;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -27,6 +33,7 @@ import org.json.JSONObject;
 
 
 public class AMapPlugin extends CordovaPlugin implements AMapLocationListener {
+    private static final int PERMISSION_ACCESS_LOCATION = 0;
 
     private static final String GET_LOCATION_ACTION   = "getCurrentPosition";
     private static final String START_LOCATION_ACTION = "startUpdatePosition";
@@ -76,6 +83,57 @@ public class AMapPlugin extends CordovaPlugin implements AMapLocationListener {
 
     private static double rad(double d) {
         return d * Math.PI / 180.0;
+    }
+
+    // Android6.0申请权限的回调方法
+    @Override
+    public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
+        switch (requestCode) {
+            // requestCode即所声明的权限获取码，在requestPermissions时传入
+            case PERMISSION_ACCESS_LOCATION:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // 获取到权限，作相应处理（调用定位SDK应当确保相关权限均被授权，否则可能引起定位失败）
+                    // LOG.i(TAG, "获取到定位权限");
+                    doLocation();
+                } else {
+                    // 没有获取到权限，做特殊处理
+                    // LOG.i(TAG, "没有获取到定位权限");
+                    JSONObject resultObject = new JSONObject();
+                    resultObject = new JSONObject();
+                    resultObject.put("errorCode", -1);
+                    resultObject.put("errorInfo", "您未开启定位功能");
+                    PluginResult pluginResult = new PluginResult(PluginResult.Status.ERROR, resultObject);
+                    pluginResult.setKeepCallback(false);
+                    curCallbackContext.sendPluginResult(pluginResult);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    // 执行单次定位
+    private void doLocation (){
+        if (curLocationClient == null) {
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    curLocationOption = new AMapLocationClientOption();
+                    curLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
+                    curLocationOption.setNeedAddress(false); //是否返回地址信息
+                    curLocationOption.setOnceLocation(true); //是否单次定位
+                    curLocationOption.setWifiActiveScan(true); //是否主动刷新WIFI
+                    curLocationOption.setMockEnable(false); //设置是否允许模拟位置, 默认为false
+                    curLocationOption.setGpsFirst(false); //优先返回GPS定位
+                    curLocationOption.setInterval(10 * 1000); //设置发起定位请求的时间间隔
+                    curLocationOption.setHttpTimeOut(10 * 1000);//设置联网超时时间 10s
+
+                    curLocationClient = new AMapLocationClient(mContext);
+                    curLocationClient.setLocationOption(curLocationOption);
+                    curLocationClient.setLocationListener(AMapPlugin.this);
+                    curLocationClient.startLocation();
+                }
+            });
+        }
     }
 
     @Override
@@ -137,29 +195,21 @@ public class AMapPlugin extends CordovaPlugin implements AMapLocationListener {
             return true;
         } else if (GET_LOCATION_ACTION.equals(action)) {
             this.curCallbackContext = callbackContext;
-            //单次定位
+            // 单次定位
             PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
             pluginResult.setKeepCallback(true);
             curCallbackContext.sendPluginResult(pluginResult);
-            if (curLocationClient == null) {
-                cordova.getThreadPool().execute(new Runnable() {
-                    public void run() {
-                        curLocationOption = new AMapLocationClientOption();
-                        curLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
-                        curLocationOption.setNeedAddress(false); //是否返回地址信息
-                        curLocationOption.setOnceLocation(true); //是否单次定位
-                        curLocationOption.setWifiActiveScan(true); //是否主动刷新WIFI
-                        curLocationOption.setMockEnable(false); //设置是否允许模拟位置, 默认为false
-                        curLocationOption.setGpsFirst(false); //优先返回GPS定位
-                        curLocationOption.setInterval(10 * 1000); //设置发起定位请求的时间间隔
-                        curLocationOption.setHttpTimeOut(10 * 1000);//设置联网超时时间 10s
 
-                        curLocationClient = new AMapLocationClient(mContext);
-                        curLocationClient.setLocationOption(curLocationOption);
-                        curLocationClient.setLocationListener(AMapPlugin.this);
-                        curLocationClient.startLocation();
-                    }
-                });
+            // 通过WiFi或移动基站的方式获取用户错略的经纬度信息，定位精度大概误差在30~1500米
+            boolean accessCoarseLocation = PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION);
+            // 通过GPS芯片接收卫星的定位信息，定位精度达10米以内
+            boolean accessFineLocation = PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+            // 申请定位权限
+            if (!accessCoarseLocation || !accessFineLocation) {
+                String[] permissions = { Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION };
+                PermissionHelper.requestPermissions(this, PERMISSION_ACCESS_LOCATION, permissions);
+            } else {
+                doLocation();
             }
             return true;
         }else if(READ_LOCATION_ACTION.equals(action)) {
@@ -167,7 +217,6 @@ public class AMapPlugin extends CordovaPlugin implements AMapLocationListener {
             PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
             pluginResult.setKeepCallback(true);
             mainCallbackContext.sendPluginResult(pluginResult);
-
             if (locationClient == null) {
                 cordova.getThreadPool().execute(new Runnable() {
                     public void run() {
